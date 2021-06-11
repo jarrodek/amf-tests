@@ -1,7 +1,9 @@
-const assert = require('assert');
+const { assert } = require('chai');
 const amf = require('amf-client-js');
 
 describe('CustomDomainProperty', function() {
+  before(() => amf.AMF.init());
+
   it('should add a custom property', function() {
     const doc = new amf.model.document.Document().withId('amf://document');
     const wa = new amf.model.domain.WebApi().withName('test');
@@ -12,6 +14,6 @@ describe('CustomDomainProperty', function() {
 
     doc.withDeclaredElement(domainElement);
 
-    assert.length(doc.declares, 1);
+    assert.lengthOf(doc.declares, 1);
   });
 });
