@@ -1,0 +1,19 @@
+{
+  "name": "amf-tests",
+  "version": "0.0.1",
+  "description": "Graph model tests",
+  "author": {
+    "name": "Pawel Uchida-Psztyc",
+    "email": "pawel.psztyc@gmail.com"
+  },
+  "dependencies": {
+    "amf-client-js": "4.7.4"
+  },
+  "devDependencies": {
+    "mocha": "^9.0.0"
+  },
+  "scripts": {
+    "test": "mocha",
+    "test:watch": "mocha"
+  }
+}
