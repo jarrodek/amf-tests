@@ -2,14 +2,17 @@
   "name": "amf-tests",
   "version": "0.0.1",
   "description": "Graph model tests",
+  "type": "module",
   "author": {
     "name": "Pawel Uchida-Psztyc",
     "email": "pawel.psztyc@gmail.com"
   },
   "dependencies": {
-    "amf-client-js": "4.7.4"
+    "amf-client-js": "5.0.0-beta.1"
   },
   "devDependencies": {
+    "@types/chai": "^4.2.19",
+    "@types/mocha": "^8.2.2",
     "chai": "^4.3.4",
     "mocha": "^9.0.0"
   },
