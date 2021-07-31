@@ -8,7 +8,7 @@
     "email": "pawel.psztyc@gmail.com"
   },
   "dependencies": {
-    "amf-client-js": "5.0.0-beta.1"
+    "amf-client-js": "5.0.0-beta.2"
   },
   "devDependencies": {
     "@types/chai": "^4.2.19",

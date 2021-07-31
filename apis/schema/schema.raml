@@ -1,0 +1,13 @@
+#%RAML 1.0
+title: API body demo
+version: v1
+baseUri: http://api.domain.com/
+
+types:
+  XmlRefSchema:
+    description: This type has included xsd schema
+    type: !include schemas/person.xsd
+  XmlRefSchemaExample:
+    description: This type has included xsd schema
+    type: !include schemas/person.xsd
+    example: !include examples/person.xml

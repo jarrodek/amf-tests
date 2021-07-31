@@ -1,0 +1,23 @@
+#%RAML 1.0
+title: Authorization Test API
+version: v1
+baseUri: http://api.domain.com/
+
+securitySchemes:
+  oauth2:
+    type: OAuth 2.0
+    displayName: Regular OAuth 2.0 definition
+    settings:
+      accessTokenUri: https://token.com
+      authorizationUri: https://auth.com
+      scopes: [profile, email]
+      authorizationGrants: [client_credentials]
+    describedBy:
+      queryParameters:
+        access_token:
+          type: string
+          description: Apply access token here.
+
+/oauth2:
+  get:
+    securedBy: [oauth2]

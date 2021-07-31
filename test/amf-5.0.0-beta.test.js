@@ -1,146 +1,80 @@
 import { assert } from 'chai';
 import amf from 'amf-client-js';
 
+/** @typedef {import('amf-client-js').SchemaShape} SchemaShape */
+/** @typedef {import('amf-client-js').WebApi} WebApi */
+/** @typedef {import('amf-client-js').SecurityScheme} SecurityScheme */
+
 describe('Beta tests', function() {
-  describe('Adding a type', () => {
-    /** @type amf.Document */
-    let api;
+  describe('restoring XML schema', () => {
+    it('has xsd schema', async () => {
+      // parsing
+      const configuration = amf.RAMLConfiguration.RAML10();
+      const ro = new amf.RenderOptions().withCompactUris().withPrettyPrint().withSourceMaps();
+      const client = configuration.withRenderOptions(ro).baseUnitClient();
+      const result = await client.parseDocument('file://apis/schema/schema.raml');
 
-    beforeEach(() => {
-      const wa = new amf.WebApi().withName('Test API');
-      const doc = new amf.Document().withId('amf://document');
-      doc.withEncodes(wa);
-      api = doc;
-    });
+      const doc = /** @type amf.Document */ (result.baseUnit);
+      const types = /** @type SchemaShape[] */ (doc.findByType('http://a.ml/vocabularies/shapes#SchemaShape'));
+      assert.lengthOf(types, 2, 'has 2 schema shapes');
+      const type = types.find(i => i.name.value() === 'XmlRefSchema');
+      const rawSrc = type.raw.value();
+      assert.typeOf(rawSrc, 'string');
+      assert.isNotEmpty(rawSrc);
 
-    it('adds the name', () => {
-      const type = new amf.ScalarShape().withName('A type');
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.name.value(), 'A type', 'has the type');
-    });
+      // serialization
+      const transformed = client.transform(result.baseUnit, amf.ProvidedMediaType.AMF);
+      const rendered = client.render(transformed.baseUnit, amf.Vendor.AMF.mediaType);
 
-    it('adds the description', () => {
-      const type = new amf.ScalarShape().withDescription('A type description');
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.description.value(), 'A type description', 'has the description');
-    });
-
-    it('adds the displayName', () => {
-      const type = new amf.ScalarShape().withDisplayName('A display name');
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.displayName.value(), 'A display name', 'has the displayName');
-    });
-
-    it('adds the data type', () => {
-      const type = new amf.ScalarShape().withDataType('http://www.w3.org/2001/XMLSchema#string');
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.dataType.value(), 'http://www.w3.org/2001/XMLSchema#string', 'has the dataType');
-    });
-
-    it('adds the deprecated', () => {
-      const type = new amf.ScalarShape().withDeprecated(true);
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.isTrue(readType.deprecated.value());
-    });
-
-    it('adds the minLength', () => {
-      const type = new amf.ScalarShape().withMinLength(1);
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.minLength.value(), 1);
-    });
-
-    it('adds the maxLength', () => {
-      const type = new amf.ScalarShape().withMaxLength(20);
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.maxLength.value(), 20);
-    });
-
-    it('adds the minimum', () => {
-      const type = new amf.ScalarShape().withMinimum(1);
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.minimum.value(), 1);
-    });
-
-    it('adds the maximum', () => {
-      const type = new amf.ScalarShape().withMaximum(20);
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.maximum.value(), 20);
-    });
-
-    it('adds the format', () => {
-      const type = new amf.ScalarShape().withFormat('float');
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.format.value(), 'float');
-    });
-
-    it('combo add type', () => {
-      const type = new amf.ScalarShape()
-        .withName('A type')
-        .withDescription('A type description')
-        .withDisplayName('A display name')
-        .withDeprecated(true)
-        .withMinLength(1)
-        .withMaxLength(20)
-        .withDataType('http://www.w3.org/2001/XMLSchema#string');
-      api.withDeclaredElement(type);
-      const readType = /** @type amf.ScalarShape */ (api.findById(type.id));
-      assert.equal(readType.name.value(), 'A type', 'has the type');
-      assert.equal(readType.description.value(), 'A type description', 'has the description');
-      assert.equal(readType.displayName.value(), 'A display name', 'has the displayName');
-      assert.isTrue(readType.deprecated.value(), 'has the deprecated');
-      assert.equal(readType.minLength.value(), 1, 'has the minLength');
-      assert.equal(readType.maxLength.value(), 20, 'has the maxLength');
-      assert.equal(readType.dataType.value(), 'http://www.w3.org/2001/XMLSchema#string', 'has the dataType');
+      // restoring
+      const c2 = amf.RAMLConfiguration.RAML10().baseUnitClient();
+      const restored = await c2.parseContent(rendered);
+      const restoredDoc = /** @type amf.Document */ (restored.baseUnit);
+      const restoredTypes = /** @type SchemaShape[] */ (restoredDoc.findByType('http://a.ml/vocabularies/shapes#SchemaShape'));
+      assert.lengthOf(restoredTypes, 2, 'has 2 schema shapes');
+      const restoredType = restoredTypes.find(i => i.name.value() === 'XmlRefSchema');
+      const rawTrg = restoredType.raw.value();
+      assert.typeOf(rawTrg, 'string');
+      assert.isNotEmpty(rawTrg);
     });
   });
 
-  describe('Importing OAS 3', () => {
-    const api = `
-openapi: '3.0.0'
-info:
-  title: Servers demo API
-  version: '1.0'
-  description: Test API for testing AMF service
-servers:
-  - url: https://development.gigantic-server.com/v1
-    description: Development server
-components:
-  schemas:
-    GeneralError:
-      type: object
-      properties:
-        code:
-          type: integer
-          format: int32
-paths:
-  /test:
-    get:
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: string
-    `.trim();
+  describe('reading relative path', () => {
+    it('has the relative path', async () => {
+      const configuration = amf.RAMLConfiguration.RAML10();
+      const ro = new amf.RenderOptions().withCompactUris().withPrettyPrint().withSourceMaps();
+      const client = configuration.withRenderOptions(ro).baseUnitClient();
+      const result = await client.parseDocument('file://apis/paths/paths.raml');
 
-    it('imports the API', async () => {
-      const configuration = amf.OASConfiguration.OAS30();
-      const client = configuration.createClient();
-      const result = await client.parseContent(api);
       const doc = /** @type amf.Document */ (result.baseUnit);
-      const webAPi = /** @type amf.WebApi */ (doc.encodes);
-      assert.typeOf(webAPi.endPoints, 'array', 'has the endpoints in the API');
-      assert.lengthOf(webAPi.endPoints, 1, 'has the endpoint');
+      const wa = /** @type WebApi */ (doc.encodes);
+      const endpoint = wa.endPoints.find((ep) => ep.path.value() === '/people/{personId}');
+      // btw, it might be intentional change and it's totally OK. API console does not use this property.
+      // However, I has a test like this working with AMF 4 and it is not working with 5.
+      assert.equal(endpoint.relativePath, '/people/{personId}', 'is consistent with AMF v4')
+    });
+  });
+
+  describe('reading oauth 2 settings', () => {
+    it('reads the settings', async () => {
+      const configuration = amf.RAMLConfiguration.RAML10();
+      const ro = new amf.RenderOptions().withCompactUris().withPrettyPrint().withSourceMaps();
+      const client = configuration.withRenderOptions(ro).baseUnitClient();
+      const result = await client.parseDocument('file://apis/secured/secured.raml');
+
+      // serialization
+      const transformed = client.transform(result.baseUnit, amf.ProvidedMediaType.AMF);
+      const rendered = client.render(transformed.baseUnit, amf.Vendor.AMF.mediaType);
+
+      // restoring
+      const c2 = amf.RAMLConfiguration.RAML10().baseUnitClient();
+      const restored = await c2.parseContent(rendered);
+      const doc2 = /** @type amf.Document */ (restored.baseUnit);
+      const list = /** @type SecurityScheme[] */ (doc2.findByType('http://a.ml/vocabularies/security#SecurityScheme'));
+      assert.lengthOf(list, 1, 'has 1 security scheme');
+      const [scheme] = list;
+      const settings = doc2.findById(scheme.settings.id);
+      assert.ok(settings, 'reads the setting');
     });
   });
 });
