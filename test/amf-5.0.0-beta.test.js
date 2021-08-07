@@ -3,7 +3,9 @@ import amf from 'amf-client-js';
 
 /** @typedef {import('amf-client-js').SchemaShape} SchemaShape */
 /** @typedef {import('amf-client-js').WebApi} WebApi */
-/** @typedef {import('amf-client-js').SecurityScheme} SecurityScheme */
+/** @typedef {import('amf-client-js').ScalarShape} ScalarShape */
+/** @typedef {import('amf-client-js').UnionShape} UnionShape */
+/** @typedef {import('amf-client-js').NodeShape} NodeShape */
 
 describe('Beta tests', function() {
   describe('restoring XML schema', () => {
@@ -23,8 +25,8 @@ describe('Beta tests', function() {
       assert.isNotEmpty(rawSrc);
 
       // serialization
-      const transformed = client.transform(result.baseUnit, amf.ProvidedMediaType.AMF);
-      const rendered = client.render(transformed.baseUnit, amf.Vendor.AMF.mediaType);
+      const transformed = client.transform(result.baseUnit, amf.PipelineId.Editing);
+      const rendered = client.render(transformed.baseUnit, 'application/ld+json');
 
       // restoring
       const c2 = amf.RAMLConfiguration.RAML10().baseUnitClient();
@@ -55,26 +57,70 @@ describe('Beta tests', function() {
     });
   });
 
-  describe('reading oauth 2 settings', () => {
-    it('reads the settings', async () => {
+  describe('data types', () => {
+    /** @type amf.Document */
+    let doc;
+
+    before(async () => {
       const configuration = amf.RAMLConfiguration.RAML10();
       const ro = new amf.RenderOptions().withCompactUris().withPrettyPrint().withSourceMaps();
       const client = configuration.withRenderOptions(ro).baseUnitClient();
-      const result = await client.parseDocument('file://apis/secured/secured.raml');
+      const result = await client.parseDocument('file://apis/types/types.raml');
+
+      if (!result.conforms) {
+        result.results.forEach(i => console.error(i.message));
+        throw new Error(`Api does not conform`);
+      }
 
       // serialization
-      const transformed = client.transform(result.baseUnit, amf.ProvidedMediaType.AMF);
-      const rendered = client.render(transformed.baseUnit, amf.Vendor.AMF.mediaType);
+      const transformed = client.transform(result.baseUnit, amf.PipelineId.Editing);
+      if (!transformed.conforms) {
+        transformed.results.forEach(i => console.error(i.message));
+        throw new Error(`Api does not conform`);
+      }
+
+      const rendered = client.render(transformed.baseUnit, 'application/ld+json');
 
       // restoring
       const c2 = amf.RAMLConfiguration.RAML10().baseUnitClient();
       const restored = await c2.parseContent(rendered);
-      const doc2 = /** @type amf.Document */ (restored.baseUnit);
-      const list = /** @type SecurityScheme[] */ (doc2.findByType('http://a.ml/vocabularies/security#SecurityScheme'));
-      assert.lengthOf(list, 1, 'has 1 security scheme');
-      const [scheme] = list;
-      const settings = doc2.findById(scheme.settings.id);
-      assert.ok(settings, 'reads the setting');
+      doc = /** @type amf.Document */ (restored.baseUnit);
+    });
+
+    it('inherits number scalar properties', async () => {
+      const list = /** @type ScalarShape[] */ (doc.findByType('http://a.ml/vocabularies/shapes#ScalarShape'));
+      const type = list.find(i => i.name.value() === 'NumberWithParent');
+      assert.equal(type.dataType.value(), 'http://www.w3.org/2001/XMLSchema#integer', 'has parent\'s data type');
+      assert.equal(type.minimum.value(), 10, 'has parent\'s minimum');
+      assert.equal(type.maximum.value(), 200, 'has own maximum');
+      assert.equal(type.defaultValueStr.value(), '2', 'has own defaultValue');
+
+      assert.lengthOf(type.values, 3, 'has parent\'s enum');
+      assert.lengthOf(type.examples, 1, 'has parent\'s examples');
+      assert.equal(type.multipleOf.value(), 5, 'has parent\'s multipleOf');
+    });
+
+    it('inherits string scalar properties', async () => {
+      const list = /** @type ScalarShape[] */ (doc.findByType('http://a.ml/vocabularies/shapes#ScalarShape'));
+      const type = list.find(i => i.name.value() === 'StringWithParent');
+      assert.equal(type.dataType.value(), 'http://www.w3.org/2001/XMLSchema#string', 'has parent\'s data type');
+      assert.equal(type.pattern.value(), '^[a-zA-Z0-9]*$', 'has own pattern');
+      
+      assert.lengthOf(type.values, 3, 'has parent\'s enum');
+      assert.lengthOf(type.examples, 1, 'has parent\'s examples');
+      assert.equal(type.defaultValueStr.value(), 'test', 'has parent\'s defaultValue');
+      assert.equal(type.minLength.value(), 3, 'has parent\'s minLength');
+      assert.equal(type.maxLength.value(), 15, 'has parent\'s maxLength');
+    });
+
+    it('has examples in the union', () => {
+      const list = /** @type UnionShape[] */ (doc.findByType('http://a.ml/vocabularies/shapes#UnionShape'));
+      const type = list.find(i => i.name.value() === 'ObjectUnionWithExample');
+      assert.lengthOf(type.examples, 0, 'has no own example');
+      assert.lengthOf(type.anyOf, 2, 'has two union members');
+      const [withExample, withoutExample] = /** @type NodeShape[] */ (type.anyOf);
+      assert.lengthOf(withoutExample.examples, 0, 'member #2 has no examples');
+      assert.lengthOf(withExample.examples, 1, 'member #1 has an example');
     });
   });
 });

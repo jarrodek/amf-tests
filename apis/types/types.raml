@@ -1,0 +1,84 @@
+#%RAML 1.0
+
+types:
+  NumberWithTraits:
+    type: number
+    description: NumberWithTraits description.
+    displayName: Number traits
+    enum: 
+      - 1
+      - 2
+      - 3
+    minimum: 10
+    maximum: 100
+    format: int32
+    multipleOf: 5
+    example: 3
+    default: 1
+  NumberWithParent:
+    type: NumberWithTraits
+    maximum: 200
+    default: 2
+
+  StringWithTraits:
+    type: string
+    description: StringWithTraits description.
+    displayName: String traits
+    default: test
+    example: other
+    pattern: "[a-zA-Z]*"
+    maxLength: 15
+    minLength: 3
+    enum: 
+     - test
+     - other
+     - another
+  StringWithParent:
+    type: StringWithTraits
+    pattern: "[a-zA-Z0-9]*"
+
+  SimpleObject:
+    type: object
+    minProperties: 1
+    maxProperties: 20
+    additionalProperties: true
+    description: A simple object
+    displayName: Simple object
+    properties: 
+      id: string
+      name:
+        type: string
+        displayName: Name
+        example: Pawel Uchida-Psztyc
+      age?:
+        type: integer
+        example: 21
+        description: Optional person age.
+        minimum: 18
+      sex:
+        type: string
+        enum: 
+          - male
+          - female
+        description: An example of an enum.
+      newsletter:
+        type: boolean
+        required: false
+        description: Whether the user wants to be added to the newsletter
+      tosAccepted:
+        type: boolean
+        default: false
+        description: Whether terms of service is accepted by the user.
+  
+  ObjectWithExample:
+    type: object
+    properties: 
+      error: boolean
+      message: string
+      optional?: number
+    example:
+      error: true
+      message: Error message
+
+  ObjectUnionWithExample:
+    type: ObjectWithExample | SimpleObject
